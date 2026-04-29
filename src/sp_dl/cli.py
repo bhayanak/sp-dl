@@ -726,7 +726,9 @@ async def _resolve_via_media_stream(
     return target
 
 
-async def _auth_login_async(tenant: str, client_id: str | None, interactive: bool):
+async def _auth_login_async(  # pragma: no cover
+    tenant: str, client_id: str | None, interactive: bool
+):
     """Execute auth login flow."""
     import httpx
 
@@ -833,5 +835,5 @@ def _setup_logging(verbose: bool, debug: bool, quiet: bool):
     )
 
 
-if __name__ == "__main__":
+if __name__ == "__main__":  # pragma: no cover
     app()

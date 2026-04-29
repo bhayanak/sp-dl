@@ -90,7 +90,7 @@ class InteractiveAuthProvider(AuthProvider):
         except httpx.HTTPError:
             return False
 
-    async def _auth_code_flow(self, client: httpx.AsyncClient) -> dict:
+    async def _auth_code_flow(self, client: httpx.AsyncClient) -> dict:  # pragma: no cover
         """Run the authorization code flow with a local redirect server."""
         from rich.console import Console
 
@@ -152,7 +152,7 @@ class InteractiveAuthProvider(AuthProvider):
         console.print("  [green]✓[/green] Authentication successful!")
         return result
 
-    def _start_redirect_server(
+    def _start_redirect_server(  # pragma: no cover
         self, expected_state: str, future: asyncio.Future[str]
     ) -> tuple[HTTPServer, int]:
         """Start a local HTTP server to capture the OAuth redirect."""

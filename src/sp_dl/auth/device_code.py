@@ -86,7 +86,7 @@ class DeviceCodeAuthProvider(AuthProvider):
         except httpx.HTTPError:
             return False
 
-    async def _device_code_flow(self, client: httpx.AsyncClient) -> dict:
+    async def _device_code_flow(self, client: httpx.AsyncClient) -> dict:  # pragma: no cover
         """Execute the device code flow interactively."""
         from rich.console import Console
 

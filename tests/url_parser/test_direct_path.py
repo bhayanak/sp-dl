@@ -50,3 +50,34 @@ class TestDirectPathParser:
         result = self.parser.parse(url)
 
         assert "/Level1/Level2/Level3/file.docx" in result.server_relative_path
+
+    def test_cannot_parse_non_sharepoint(self):
+        url = "https://example.com/sites/Team/file.mp4"
+        assert self.parser.can_parse(url) is False
+
+    def test_cannot_parse_sharing_link(self):
+        url = "https://contoso.sharepoint.com/:v:/s/Team/abc123"
+        assert self.parser.can_parse(url) is False
+
+    def test_cannot_parse_no_site_prefix(self):
+        url = "https://contoso.sharepoint.com/random/path/file.mp4"
+        assert self.parser.can_parse(url) is False
+
+    def test_parse_non_sharepoint_raises(self):
+        import pytest
+
+        from sp_dl.models import URLParseError
+
+        with pytest.raises(URLParseError, match="Not a SharePoint"):
+            self.parser.parse("https://example.com/sites/t/file.mp4")
+
+    def test_parse_teams_site_path(self):
+        url = "https://contoso.sharepoint.com/teams/MyTeam/Shared%20Documents/doc.pptx"
+        result = self.parser.parse(url)
+        assert result.site_path == "/teams/MyTeam"
+
+    def test_parse_personal_path(self):
+        url = "https://contoso-my.sharepoint.com/personal/user_contoso_com/Documents/report.xlsx"
+        result = self.parser.parse(url)
+        assert result.site_path == "/personal/user_contoso_com"
+        assert result.is_personal is True

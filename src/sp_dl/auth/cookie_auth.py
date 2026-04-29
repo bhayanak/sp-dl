@@ -110,7 +110,7 @@ class CookieAuthProvider(AuthProvider):
         logger.info(f"Loaded {len(sp_cookies)} SharePoint cookies from {path}")
         return jar
 
-    def _extract_from_browser(self, browser: str) -> http.cookiejar.CookieJar:
+    def _extract_from_browser(self, browser: str) -> http.cookiejar.CookieJar:  # pragma: no cover
         """Extract cookies from installed browser."""
         try:
             import browser_cookie3

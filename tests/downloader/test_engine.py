@@ -128,3 +128,298 @@ class TestDownloadFile:
 
         assert result.output_path.exists()
         assert result.output_path.parent.is_dir()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_401_raises_access_denied(self, tmp_path: Path):
+        respx.get("https://example.com/file.mp4").mock(return_value=httpx.Response(401))
+
+        target = DownloadTarget(
+            metadata=FileMetadata(name="file.mp4", size_bytes=100, content_type="video/mp4"),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        from sp_dl.models import DownloadError
+
+        with pytest.raises(DownloadError):
+            await download_file(client, target, tmp_path / "file.mp4")
+        await client.aclose()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_html_instead_of_video_raises(self, tmp_path: Path):
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(
+                200,
+                content=b"<html>Not a video</html>",
+                headers={"Content-Type": "text/html"},
+            )
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(name="file.mp4", size_bytes=5000000, content_type="video/mp4"),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        from sp_dl.models import DownloadError
+
+        with pytest.raises(DownloadError, match="HTML instead"):
+            await download_file(client, target, tmp_path / "file.mp4")
+        await client.aclose()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_with_progress_callback(self, tmp_path: Path):
+        content = b"x" * 5000
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(200, content=content)
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(
+                name="file.mp4", size_bytes=len(content), content_type="video/mp4"
+            ),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        received_bytes = []
+        client = httpx.AsyncClient()
+        await download_file(
+            client,
+            target,
+            tmp_path / "file.mp4",
+            progress_callback=lambda n: received_bytes.append(n),
+        )
+        await client.aclose()
+
+        assert sum(received_bytes) == len(content)
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_size_mismatch_raises(self, tmp_path: Path):
+        content = b"short"
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(200, content=content)
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(name="file.mp4", size_bytes=99999, content_type="video/mp4"),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        from sp_dl.models import DownloadError
+
+        with pytest.raises(DownloadError, match="Size mismatch"):
+            await download_file(client, target, tmp_path / "file.mp4")
+        await client.aclose()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_resume_with_partial_file(self, tmp_path: Path):
+        """Resume download from an existing .part file."""
+        part_content = b"x" * 100
+        remaining = b"y" * 200
+        output_path = tmp_path / "file.mp4"
+        part_file = _part_path(output_path)
+        part_file.write_bytes(part_content)
+
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(
+                206,
+                content=remaining,
+                headers={
+                    "Content-Length": str(len(remaining)),
+                    "Content-Range": "bytes 100-299/300",
+                },
+            )
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(name="file.mp4", size_bytes=300, content_type="video/mp4"),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        result = await download_file(client, target, output_path)
+        await client.aclose()
+
+        assert result.output_path.exists()
+        assert result.output_path.stat().st_size == 300
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_403_raises_access_denied(self, tmp_path: Path):
+        respx.get("https://example.com/file.mp4").mock(return_value=httpx.Response(403))
+
+        target = DownloadTarget(
+            metadata=FileMetadata(name="file.mp4", size_bytes=100, content_type="video/mp4"),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        from sp_dl.models import DownloadError
+
+        with pytest.raises(DownloadError):
+            await download_file(client, target, tmp_path / "file.mp4")
+        await client.aclose()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_with_auth_headers(self, tmp_path: Path):
+        """Download that requires auth headers uses client as-is."""
+        content = b"authenticated content"
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(200, content=content)
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(
+                name="file.mp4",
+                size_bytes=len(content),
+                content_type="application/octet-stream",
+            ),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=True,
+        )
+
+        client = httpx.AsyncClient(headers={"Authorization": "Bearer tok"})
+        result = await download_file(client, target, tmp_path / "file.mp4")
+        await client.aclose()
+
+        assert result.output_path.read_bytes() == content
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_rate_limited(self, tmp_path: Path):
+        """Download with rate limiting completes."""
+        content = b"z" * 10000
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(200, content=content)
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(
+                name="file.mp4", size_bytes=len(content), content_type="video/mp4"
+            ),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        result = await download_file(
+            client,
+            target,
+            tmp_path / "file.mp4",
+            limit_rate=1024 * 1024,  # 1MB/s
+        )
+        await client.aclose()
+        assert result.output_path.exists()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_server_ignores_range(self, tmp_path: Path):
+        """Server returns 200 instead of 206 when Range was sent — restart."""
+        output_path = tmp_path / "file.mp4"
+        part_file = _part_path(output_path)
+        part_file.write_bytes(b"partial")
+
+        full_content = b"full content here"
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(200, content=full_content)
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(
+                name="file.mp4",
+                size_bytes=len(full_content),
+                content_type="video/mp4",
+            ),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        result = await download_file(client, target, output_path)
+        await client.aclose()
+
+        assert result.output_path.read_bytes() == full_content
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_429_throttled_then_succeeds(self, tmp_path: Path):
+        """Server returns 429 first, then 200 on retry."""
+        content = b"finally got it"
+        route = respx.get("https://example.com/file.mp4")
+        route.side_effect = [
+            httpx.Response(429, headers={"Retry-After": "0"}),
+            httpx.Response(200, content=content),
+        ]
+
+        target = DownloadTarget(
+            metadata=FileMetadata(
+                name="file.mp4", size_bytes=len(content), content_type="video/mp4"
+            ),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        result = await download_file(client, target, tmp_path / "file.mp4")
+        await client.aclose()
+        assert result.output_path.read_bytes() == content
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_416_range_complete(self, tmp_path: Path):
+        """Server returns 416 when file is already complete."""
+        output_path = tmp_path / "file.mp4"
+        part_file = _part_path(output_path)
+        part_file.write_bytes(b"complete file data here")
+
+        respx.get("https://example.com/file.mp4").mock(return_value=httpx.Response(416))
+
+        target = DownloadTarget(
+            metadata=FileMetadata(name="file.mp4", size_bytes=22, content_type="video/mp4"),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        result = await download_file(client, target, output_path)
+        await client.aclose()
+        assert result.output_path.exists()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_small_content_warning(self, tmp_path: Path):
+        """Server returns suspiciously small content for a video."""
+        content = b"tiny"  # 4 bytes
+        respx.get("https://example.com/file.mp4").mock(
+            return_value=httpx.Response(
+                200,
+                content=content,
+                headers={"Content-Length": str(len(content))},
+            )
+        )
+
+        target = DownloadTarget(
+            metadata=FileMetadata(name="file.mp4", size_bytes=50_000_000, content_type="video/mp4"),
+            download_url="https://example.com/file.mp4",
+            requires_auth_headers=False,
+        )
+
+        client = httpx.AsyncClient()
+        from sp_dl.models import DownloadError
+
+        with pytest.raises(DownloadError, match="Size mismatch"):
+            await download_file(client, target, tmp_path / "file.mp4")
+        await client.aclose()

@@ -87,3 +87,85 @@ class TestSharingLinkResolver:
         with pytest.raises(AccessDeniedError):
             await self.resolver.resolve(parsed, client)
         await client.aclose()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_resolve_401_raises(self):
+        respx.get(url__startswith="https://graph.microsoft.com/v1.0/shares/").mock(
+            return_value=httpx.Response(401)
+        )
+
+        parsed = ParsedURL(
+            original_url="https://contoso.sharepoint.com/:v:/s/Team/abc",
+            url_type=URLType.SHARING_LINK,
+            tenant="contoso",
+            tenant_domain="contoso.sharepoint.com",
+            sharing_token="abc",
+        )
+
+        client = httpx.AsyncClient(headers={"Authorization": "Bearer token"})
+        with pytest.raises(AccessDeniedError):
+            await self.resolver.resolve(parsed, client)
+        await client.aclose()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_resolve_404_raises(self):
+        respx.get(url__startswith="https://graph.microsoft.com/v1.0/shares/").mock(
+            return_value=httpx.Response(404)
+        )
+
+        parsed = ParsedURL(
+            original_url="https://contoso.sharepoint.com/:v:/s/Team/abc",
+            url_type=URLType.SHARING_LINK,
+            tenant="contoso",
+            tenant_domain="contoso.sharepoint.com",
+            sharing_token="abc",
+        )
+
+        client = httpx.AsyncClient(headers={"Authorization": "Bearer token"})
+        from sp_dl.models import ResolveError
+
+        with pytest.raises(ResolveError, match="not found"):
+            await self.resolver.resolve(parsed, client)
+        await client.aclose()
+
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_resolve_500_raises(self):
+        respx.get(url__startswith="https://graph.microsoft.com/v1.0/shares/").mock(
+            return_value=httpx.Response(500, text="Server error")
+        )
+
+        parsed = ParsedURL(
+            original_url="https://contoso.sharepoint.com/:v:/s/Team/abc",
+            url_type=URLType.SHARING_LINK,
+            tenant="contoso",
+            tenant_domain="contoso.sharepoint.com",
+            sharing_token="abc",
+        )
+
+        client = httpx.AsyncClient(headers={"Authorization": "Bearer token"})
+        from sp_dl.models import ResolveError
+
+        with pytest.raises(ResolveError, match="Failed to resolve"):
+            await self.resolver.resolve(parsed, client)
+        await client.aclose()
+
+    def test_parse_drive_item_no_download_url(self):
+        item = {"name": "file.mp4", "size": 100}
+        from sp_dl.models import ResolveError
+
+        with pytest.raises(ResolveError, match="No download URL"):
+            self.resolver._parse_drive_item(item)
+
+    def test_parse_drive_item_content_fallback(self):
+        item = {
+            "name": "file.mp4",
+            "size": 100,
+            "id": "item-id",
+            "parentReference": {"driveId": "drive-id"},
+        }
+        target = self.resolver._parse_drive_item(item)
+        assert "content" in target.download_url
+        assert target.requires_auth_headers is True

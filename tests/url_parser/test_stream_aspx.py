@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from sp_dl.models import URLType
+import pytest
+
+from sp_dl.models import URLParseError, URLType
 from sp_dl.url_parser.stream_aspx import StreamAspxParser
 
 
@@ -50,3 +52,35 @@ class TestStreamAspxParser:
         result = self.parser.parse(url)
 
         assert "My Video.mp4" in result.server_relative_path
+
+    # Manual parse fallback tests
+    def test_manual_parse_non_sharepoint_raises(self):
+        url = "https://example.com/_layouts/15/stream.aspx?id=/file.mp4"
+        with pytest.raises(URLParseError, match="Not a SharePoint"):
+            self.parser._manual_parse(url)
+
+    def test_manual_parse_no_id_param_raises(self):
+        url = "https://contoso.sharepoint.com/_layouts/15/stream.aspx?other=value"
+        with pytest.raises(URLParseError, match="No 'id' parameter"):
+            self.parser._manual_parse(url)
+
+    def test_manual_parse_with_sites_path(self):
+        url = (
+            "https://contoso.sharepoint.com/_layouts/15/stream.aspx?id=/sites/Team/Documents/v.mp4"
+        )
+        result = self.parser._manual_parse(url)
+        assert result.site_path == "/sites/Team"
+        assert result.server_relative_path == "/sites/Team/Documents/v.mp4"
+
+    def test_manual_parse_with_personal_path(self):
+        url = "https://contoso-my.sharepoint.com/_layouts/15/stream.aspx?id=/personal/user/Documents/v.mp4"
+        result = self.parser._manual_parse(url)
+        assert result.site_path == "/personal/user"
+        assert result.is_personal is True
+
+    def test_manual_parse_basic(self):
+        # URL that won't match regex but is valid
+        url = "https://contoso.sharepoint.com/_layouts/15/stream.aspx?id=/Documents/v.mp4"
+        result = self.parser._manual_parse(url)
+        assert result.url_type == URLType.STREAM_ASPX
+        assert result.server_relative_path == "/Documents/v.mp4"
