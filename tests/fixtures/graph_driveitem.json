@@ -1,0 +1,40 @@
+{
+  "id": "01NKDM7HMO4KPXZQNBGLHYGX2OAFQZP43Q",
+  "name": "Q3 All-Hands Recording.mp4",
+  "size": 1524629504,
+  "file": {
+    "mimeType": "video/mp4",
+    "hashes": {
+      "quickXorHash": "AQAAABh5b3J4Z2FiYw=="
+    }
+  },
+  "video": {
+    "duration": 3600000,
+    "width": 1920,
+    "height": 1080,
+    "bitrate": 3500000,
+    "audioFormat": "aac",
+    "videoCodec": "h264"
+  },
+  "lastModifiedDateTime": "2026-04-15T14:30:00Z",
+  "createdDateTime": "2026-04-15T10:00:00Z",
+  "createdBy": {
+    "user": {
+      "displayName": "John Smith",
+      "id": "user-id-123"
+    }
+  },
+  "lastModifiedBy": {
+    "user": {
+      "displayName": "John Smith",
+      "id": "user-id-123"
+    }
+  },
+  "parentReference": {
+    "driveId": "b!xYzAbCdEfGhIjKlMnOpQrStUvWx",
+    "driveType": "documentLibrary",
+    "id": "parent-item-id",
+    "path": "/drive/root:/Shared Documents/Recordings"
+  },
+  "@microsoft.graph.downloadUrl": "https://contoso.sharepoint.com/_layouts/15/download.aspx?UniqueId=abc123&Translate=false&tempauth=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9"
+}

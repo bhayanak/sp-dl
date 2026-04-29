@@ -1,0 +1,6 @@
+# Netscape HTTP Cookie File
+# This is a generated file! Do not edit.
+
+.sharepoint.com	TRUE	/	TRUE	0	FedAuth	77u/PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0idXRmLTgiPz48U1A+example_fedauth_token
+.sharepoint.com	TRUE	/	TRUE	0	rtFa	exampleRtFaRefreshTokenValue1234567890abcdef
+.sharepoint.com	TRUE	/	TRUE	0	SPOIDCRL	exampleSPOIDCRLvalueForAuthentication

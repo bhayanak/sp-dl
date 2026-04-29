@@ -1,0 +1,16 @@
+{
+  "d": {
+    "__metadata": {
+      "type": "SP.File"
+    },
+    "Name": "training-video.mp4",
+    "Title": "Training Video",
+    "Length": "524288000",
+    "ContentType": "video/mp4",
+    "ETag": "\"{E9B3C7F1-A2B4-4C5D-9E6F-7A8B9C0D1E2F},1\"",
+    "TimeLastModified": "2026-04-10T09:15:00Z",
+    "TimeCreated": "2026-04-01T08:00:00Z",
+    "ServerRelativeUrl": "/sites/Team/Shared Documents/Videos/training-video.mp4",
+    "UniqueId": "e9b3c7f1-a2b4-4c5d-9e6f-7a8b9c0d1e2f"
+  }
+}

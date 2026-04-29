@@ -1,0 +1,76 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "sp-dl"
+version = "0.1.0"
+description = "Download videos and files from SharePoint — like yt-dlp for SharePoint"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+keywords = ["sharepoint", "download", "video", "stream", "microsoft"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Environment :: Console",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Multimedia :: Video",
+]
+
+dependencies = [
+    "typer>=0.12",
+    "httpx>=0.27",
+    "rich>=13.0",
+    "beautifulsoup4>=4.12",
+    "lxml>=5.0",
+    "msal>=1.28",
+    "keyring>=25.0",
+    "tomli>=2.0; python_version<'3.11'",
+]
+
+[project.optional-dependencies]
+browser-cookies = ["browser-cookie3>=0.19"]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "respx>=0.21",
+    "ruff>=0.4",
+]
+
+[project.scripts]
+sp-dl = "sp_dl.cli:app"
+
+[project.urls]
+Homepage = "https://github.com/sp-dl/sp-dl"
+Repository = "https://github.com/sp-dl/sp-dl"
+Issues = "https://github.com/sp-dl/sp-dl/issues"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/sp_dl"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
+
+[tool.ruff.lint.per-file-ignores]
+"src/sp_dl/cli.py" = ["B008"]  # Typer uses function calls in argument defaults
+
+[tool.coverage.run]
+source = ["sp_dl"]
+
+[tool.coverage.report]
+fail_under = 90
