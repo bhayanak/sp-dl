@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "sharepoint-dl"
-version = "0.1.0"
+version = "1.0.0"
 description = "Download videos and files from SharePoint — like yt-dlp for SharePoint"
 readme = "README.md"
 license = { text = "MIT" }
