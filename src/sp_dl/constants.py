@@ -1,4 +1,4 @@
-"""Constants for sp-dl: URL patterns, API endpoints, and defaults."""
+"""Constants for sharepoint-dl: URL patterns, API endpoints, and defaults."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""Configuration management for sp-dl."""
+"""Configuration management for sharepoint-dl."""
 
 from __future__ import annotations
 

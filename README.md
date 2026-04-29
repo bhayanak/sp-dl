@@ -1,7 +1,7 @@
-# sp-dl
+# sharepoint-dl
 
 <p align="center">
-  <img src="assets/logo.svg" alt="sp-dl logo" width="128" height="128">
+  <img src="assets/logo.svg" alt="sharepoint-dl logo" width="128" height="128">
 </p>
 
 <p align="center">
@@ -11,8 +11,8 @@
 <p align="center">
   <a href="https://github.com/bhayanak/sp-dl/actions/workflows/ci.yml"><img src="https://github.com/bhayanak/sp-dl/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
   <a href="https://codecov.io/gh/bhayanak/sp-dl"><img src="https://codecov.io/gh/bhayanak/sp-dl/graph/badge.svg" alt="Coverage"></a>
-  <a href="https://pypi.org/project/sp-dl/"><img src="https://img.shields.io/pypi/v/sp-dl" alt="PyPI"></a>
-  <a href="https://pypi.org/project/sp-dl/"><img src="https://img.shields.io/pypi/pyversions/sp-dl" alt="Python"></a>
+  <a href="https://pypi.org/project/sharepoint-dl/"><img src="https://img.shields.io/pypi/v/sharepoint-dl" alt="PyPI"></a>
+  <a href="https://pypi.org/project/sharepoint-dl/"><img src="https://img.shields.io/pypi/pyversions/sharepoint-dl" alt="Python"></a>
   <a href="LICENSE"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="License: MIT"></a>
 </p>
 
@@ -39,13 +39,13 @@
 ## Install
 
 ```bash
-pip install sp-dl
+pip install sharepoint-dl
 ```
 
 Or with [pipx](https://pipx.pypa.io/) for isolated install:
 
 ```bash
-pipx install sp-dl
+pipx install sharepoint-dl
 ```
 
 ## Quick Start
@@ -66,7 +66,7 @@ sp-dl download "https://contoso.sharepoint.com/sites/Team/_layouts/15/stream.asp
 ### Auto-Extract Cookies from Browser
 
 ```bash
-pip install 'sp-dl[browser-cookies]'
+pip install 'sharepoint-dl[browser-cookies]'
 
 # Close your browser first, then:
 sp-dl download "https://contoso.sharepoint.com/sites/Team/Shared%20Documents/demo.mp4" \

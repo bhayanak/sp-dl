@@ -1,4 +1,4 @@
-"""Core data models for sp-dl."""
+"""Core data models for sharepoint-dl."""
 
 from __future__ import annotations
 
@@ -104,7 +104,7 @@ class DownloadResult:
 
 
 class SpDlError(Exception):
-    """Base exception for sp-dl."""
+    """Base exception for sharepoint-dl."""
 
 
 class AuthError(SpDlError):

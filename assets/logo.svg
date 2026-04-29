@@ -33,6 +33,6 @@
         fill="none" stroke="#ffffff" stroke-width="16" stroke-linecap="round" stroke-linejoin="round"/>
 
   <!-- "SP" text badge (top-right) -->
-  <rect x="310" y="100" width="90" height="44" rx="10" fill="#ffffff" opacity="0.95"/>
-  <text x="355" y="130" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="26" font-weight="800" fill="#0078d4" text-anchor="middle" dominant-baseline="central">SP</text>
+  <rect x="310" y="100" width="290" height="44" rx="10" fill="#ffffff" opacity="0.95"/>
+  <text x="255" y="130" font-family="system-ui, -apple-system, 'Segoe UI', sans-serif" font-size="26" font-weight="800" fill="#0078d4" text-anchor="middle" dominant-baseline="central">SharePpoint</text>
 </svg>

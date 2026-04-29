@@ -1,11 +1,11 @@
-# Contributing to sp-dl
+# Contributing to sharepoint-dl
 
 Thanks for your interest in contributing!
 
 ## Development Setup
 
 ```bash
-git clone https://github.com/sp-dl/sp-dl.git
+git clone https://github.com/bhayanak/sp-dl.git
 cd sp-dl
 python -m venv .venv
 source .venv/bin/activate
