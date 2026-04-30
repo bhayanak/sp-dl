@@ -218,25 +218,6 @@ ruff check src/ tests/
 ruff format src/ tests/
 ```
 
-## Architecture
-
-```
-sp-dl
-├── auth/              # Authentication providers (cookies, OAuth2 device code, client creds)
-├── resolver/          # URL → download target resolution
-│   ├── sp_rest.py     # SharePoint REST API (v1 + v2.0)
-│   ├── stream_page.py # stream.aspx HTML parsing + download-block detection
-│   ├── media_stream.py# DASH manifest builder for download-blocked videos
-│   ├── graph_api.py   # Microsoft Graph API
-│   └── sharing.py     # Sharing link decoder
-├── downloader/        # Download engines
-│   ├── engine.py      # HTTP download with resume + retry
-│   └── ffmpeg.py      # Adaptive streaming (DASH/HLS) via ffmpeg
-├── url_parser/        # URL type detection and parsing
-├── cli.py             # Typer CLI application
-└── config.py          # TOML config + env var loading
-```
-
 ## License
 
 [MIT](LICENSE)
