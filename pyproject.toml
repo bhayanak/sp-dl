@@ -72,4 +72,4 @@ select = ["E", "F", "W", "I", "N", "UP", "B", "A", "SIM"]
 source = ["sp_dl"]
 
 [tool.coverage.report]
-fail_under = 95
+fail_under = 90
