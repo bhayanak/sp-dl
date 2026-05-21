@@ -23,9 +23,6 @@ app = typer.Typer(
         "[bold]Quick start:[/bold]\n\n"
         "  [dim]# Cookie-based (easiest):[/dim]\n"
         "  sp-dl download URL --cookies cookies.txt\n\n"
-        "  [dim]# Auto-extract from browser:[/dim]\n"
-        "  pip install 'sp-dl\\[browser-cookies]'\n"
-        "  sp-dl download URL --cookies-from-browser chrome\n\n"
         "  [dim]# Show file info only:[/dim]\n"
         "  sp-dl download URL --info -c cookies.txt\n\n"
         "  [dim]# Batch download:[/dim]\n"
@@ -85,11 +82,6 @@ def download(
         "--cookies",
         "-c",
         help="Path to Netscape-format cookie file (recommended auth method).",
-    ),
-    cookies_from_browser: str | None = typer.Option(
-        None,
-        "--cookies-from-browser",
-        help="Extract cookies from browser: chrome, edge, firefox, brave.",
     ),
     output: str | None = typer.Option(
         None,
@@ -164,13 +156,12 @@ def download(
     [bold]Authentication[/bold] (pick one):
 
       [cyan]--cookies / -c[/cyan]       Netscape cookie file (easiest, recommended)
-      [cyan]--cookies-from-browser[/cyan]  Auto-extract from Chrome/Edge/Firefox
       [cyan]sp-dl auth login[/cyan]     OAuth device code (enterprise tenants)
 
     [bold]Examples[/bold]:
 
       sp-dl download URL -c cookies.txt
-      sp-dl download URL --cookies-from-browser chrome -o video.mp4
+      sp-dl download URL -c cookies.txt -o video.mp4
       sp-dl download URL --info -c cookies.txt
     """
     _setup_logging(verbose, debug, quiet)
@@ -178,7 +169,6 @@ def download(
         _download_async(
             url=url,
             cookies=cookies,
-            cookies_from_browser=cookies_from_browser,
             output=output,
             info_only=info or json_output,
             json_output=json_output,
@@ -197,7 +187,6 @@ def download(
 def batch_download(
     batch_file: Path = typer.Argument(..., help="File containing URLs (one per line)."),
     cookies: Path | None = typer.Option(None, "--cookies", "-c"),
-    cookies_from_browser: str | None = typer.Option(None, "--cookies-from-browser"),
     output: str | None = typer.Option(None, "-o", "--output"),
     no_overwrites: bool = typer.Option(False, "--no-overwrites"),
     limit_rate: str | None = typer.Option(None, "--limit-rate", "-r"),
@@ -230,7 +219,6 @@ def batch_download(
                 _download_async(
                     url=url,
                     cookies=cookies,
-                    cookies_from_browser=cookies_from_browser,
                     output=output,
                     info_only=False,
                     json_output=False,
@@ -363,15 +351,6 @@ def quickstart():
         ),
     )
     table.add_row(
-        "Auto-extract\nfrom browser",
-        "Easy",
-        (
-            "1. pip install 'sp-dl[browser-cookies]'\n"
-            "2. Close your browser completely\n"
-            "3. sp-dl download URL --cookies-from-browser chrome"
-        ),
-    )
-    table.add_row(
         "OAuth login\n(device code)",
         "Medium",
         (
@@ -414,7 +393,6 @@ def quickstart():
 async def _download_async(
     url: str,
     cookies: Path | None,
-    cookies_from_browser: str | None,
     output: str | None,
     info_only: bool,
     json_output: bool,
@@ -430,7 +408,6 @@ async def _download_async(
     from sp_dl.auth.session import build_session, create_auth_provider
     from sp_dl.config import SpDlConfig, resolve_output_path
     from sp_dl.downloader.engine import download_file, parse_rate_limit
-    from sp_dl.downloader.ffmpeg import download_manifest, is_ffmpeg_available
     from sp_dl.downloader.progress import create_download_progress, format_size
     from sp_dl.models import DownloadBlockedError, SpDlError, URLType
     from sp_dl.resolver import resolve_download_target
@@ -482,10 +459,10 @@ async def _download_async(
     try:
         auth_provider = create_auth_provider(
             cookies_file=cookies or (Path(config.cookies_file) if config.cookies_file else None),
-            cookies_from_browser=cookies_from_browser or config.cookies_from_browser or None,
             tenant=effective_tenant or "common",
             client_id=client_id or config.client_id or None,
             client_secret=client_secret,
+            sharepoint_domain=parsed.tenant_domain,
         )
         client = await build_session(auth_provider)
     except SpDlError as e:
@@ -495,11 +472,6 @@ async def _download_async(
         err_console.print("  1. Log into SharePoint in your browser")
         err_console.print("  2. Export cookies (use 'Get cookies.txt' browser extension)")
         err_console.print("  3. Run: sp-dl download URL --cookies cookies.txt")
-        err_console.print()
-        err_console.print(
-            "  Or auto-extract: pip install 'sp-dl\\[browser-cookies]' && "
-            "sp-dl download URL --cookies-from-browser chrome"
-        )
         raise typer.Exit(1) from None
 
     if not quiet:
@@ -580,16 +552,25 @@ async def _download_async(
     # Step 5: Download
     if target.is_manifest:
         if not quiet:
-            console.print("[bold]📥 Downloading via ffmpeg (adaptive stream)...[/bold]")
-        if not is_ffmpeg_available():
-            err_console.print(
-                "[red]❌ ffmpeg required for adaptive streaming downloads.[/red]\n"
-                "Install: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"
-            )
-            await client.aclose()
-            raise typer.Exit(1)
+            console.print("[bold]📥 Downloading (parallel adaptive stream)...[/bold]")
         try:
-            await download_manifest(target.download_url, output_path, cookies)
+            from sp_dl.downloader.parallel_dash import download_dash_parallel
+
+            progress = create_download_progress()
+            task_id = progress.add_task(
+                "download",
+                total=meta.size_bytes or None,
+                filename=meta.name,
+            )
+
+            def manifest_progress_cb(bytes_written: int):
+                progress.update(task_id, advance=bytes_written)
+
+            with progress:
+                await download_dash_parallel(
+                    target.download_url, output_path, cookies,
+                    progress_callback=manifest_progress_cb,
+                )
             if not quiet:
                 console.print(f"\n[green]✅ Downloaded:[/green] {output_path}")
         except SpDlError as e:
@@ -644,17 +625,26 @@ async def _download_async(
                     )
                     console.print()
                 target = await _resolve_via_media_stream(parsed, client, effective_tenant, quiet)
-                # Retry as manifest download
+                # Retry as manifest download (parallel)
                 meta = target.metadata
-                if not is_ffmpeg_available():
-                    err_console.print(
-                        "[red]❌ ffmpeg required for streaming downloads.[/red]\n"
-                        "Install: brew install ffmpeg (macOS) or apt install ffmpeg (Linux)"
-                    )
-                    await client.aclose()
-                    raise typer.Exit(1) from None
                 try:
-                    await download_manifest(target.download_url, output_path, cookies)
+                    from sp_dl.downloader.parallel_dash import download_dash_parallel
+
+                    retry_progress = create_download_progress()
+                    retry_task = retry_progress.add_task(
+                        "download",
+                        total=meta.size_bytes or None,
+                        filename=meta.name,
+                    )
+
+                    def retry_progress_cb(bytes_written: int):
+                        retry_progress.update(retry_task, advance=bytes_written)
+
+                    with retry_progress:
+                        await download_dash_parallel(
+                            target.download_url, output_path, cookies,
+                            progress_callback=retry_progress_cb,
+                        )
                     if not quiet:
                         console.print(f"\n[green]✅ Downloaded:[/green] {output_path}")
                 except SpDlError as me:
@@ -684,7 +674,7 @@ async def _resolve_via_media_stream(
     tenant_domain = parsed.tenant_domain
     scopes = [f"https://{tenant_domain}/.default", "offline_access"]
 
-    # Acquire OAuth2 token via device code flow (with cache)
+    # Use domain-specific cache to avoid scope conflicts with Graph tokens
     cache = TokenCache(cache_dir=TokenCache()._cache_dir / f"media_{tenant_domain}")
     auth = DeviceCodeAuthProvider(
         tenant=effective_tenant,

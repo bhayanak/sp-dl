@@ -74,7 +74,20 @@ class StreamPageResolver(Resolver):
                 # Check if download is blocked by admin policy
                 file_info = self._parse_g_file_info(html)
                 if file_info and file_info.get("isDownloadBlocked"):
-                    logger.info("Download blocked by admin policy — media stream required")
+                    logger.info("Download blocked by admin policy — checking for manifest URL")
+                    # Try to extract the pre-signed manifest URL from g_fileInfo
+                    # SharePoint embeds a valid SP-scoped access_token in this URL
+                    manifest_url = self._extract_manifest_from_file_info(file_info, html)
+                    if manifest_url:
+                        logger.info("Found pre-signed manifest URL in page — no OAuth needed")
+                        metadata = self._extract_metadata(html, parsed)
+                        return DownloadTarget(
+                            metadata=metadata,
+                            download_url=manifest_url,
+                            requires_auth_headers=False,
+                            is_manifest=True,
+                        )
+                    # No manifest URL available — need OAuth2
                     raise DownloadBlockedError(
                         "SharePoint admin has blocked direct file downloads for this site. "
                         "OAuth2 authentication is required to stream the video."
@@ -172,6 +185,36 @@ class StreamPageResolver(Resolver):
                     return sources_data[0].get("url") or sources_data[0].get("src")
             except (json.JSONDecodeError, AttributeError):
                 pass
+
+        return None
+
+    def _extract_manifest_from_file_info(self, file_info: dict, html: str) -> str | None:
+        """Extract a pre-signed video manifest URL from g_fileInfo or page HTML.
+
+        SharePoint embeds a videoManifestUrl with a valid SP-scoped access_token.
+        This URL can be used directly without needing our own OAuth token.
+        """
+        # Check g_fileInfo for direct manifest URL fields
+        for key in ("videoManifestUrl", ".videoManifestUrl", "VideoManifestUrl"):
+            url = file_info.get(key)
+            if url and isinstance(url, str) and url.startswith("http"):
+                return url
+
+        # Try extracting from .transformUrl (may have access_token)
+        transform_url = file_info.get(".transformUrl", "")
+        if transform_url and "access_token=" in transform_url:
+            return transform_url
+
+        # Fall back to regex patterns in the full HTML
+        manifest_pattern = re.compile(
+            r'"(?:videoManifestUrl|VideoManifestUrl|manifestUrl)"\s*:\s*"([^"]+)"',
+            re.IGNORECASE,
+        )
+        match = manifest_pattern.search(html)
+        if match:
+            url = match.group(1).replace("\\u002f", "/").replace("\\/", "/")
+            if url.startswith("http"):
+                return url
 
         return None
 

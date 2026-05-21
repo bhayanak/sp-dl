@@ -63,16 +63,6 @@ sp-dl download "https://contoso.sharepoint.com/sites/Team/_layouts/15/stream.asp
   --cookies cookies.txt
 ```
 
-### Auto-Extract Cookies from Browser
-
-```bash
-pip install 'sharepoint-dl[browser-cookies]'
-
-# Close your browser first, then:
-sp-dl download "https://contoso.sharepoint.com/sites/Team/Shared%20Documents/demo.mp4" \
-  --cookies-from-browser chrome
-```
-
 ### Using Device Code (OAuth — for enterprise tenants)
 
 ```bash
@@ -110,9 +100,6 @@ sp-dl download <URL> --cookies cookies.txt
 
 # Download from a sharing link
 sp-dl download "https://contoso.sharepoint.com/:v:/s/Team/EaBcDeFgHiJk" -c cookies.txt
-
-# Auto-extract cookies from browser
-sp-dl download <URL> --cookies-from-browser chrome
 
 # Show file info without downloading
 sp-dl download <URL> --info -c cookies.txt
@@ -154,7 +141,6 @@ sp-dl quickstart
 | Method | Best For | Setup |
 |---|---|---|
 | `--cookies` | Quick downloads, read-only users | Export cookies from browser |
-| `--cookies-from-browser` | Desktop users | Auto-extract from Chrome/Edge/Firefox |
 | `sp-dl auth login` | Enterprise tenants, download-blocked sites | One-time device code login |
 | `--client-id --client-secret` | Service accounts, CI/CD | Azure AD admin setup |
 

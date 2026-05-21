@@ -20,10 +20,6 @@ class TestCookieAuth:
         provider = CookieAuthProvider(cookies_file=Path("/tmp/cookies.txt"))
         assert "cookies.txt" in provider.description
 
-    def test_description_browser(self):
-        provider = CookieAuthProvider(browser="chrome")
-        assert "chrome" in provider.description
-
     def test_description_neither(self):
         provider = CookieAuthProvider()
         assert "Cookie-based" in provider.description
@@ -57,25 +53,13 @@ class TestCookieAuth:
         with pytest.raises(AuthError, match="No SharePoint cookies"):
             asyncio.run(provider.authenticate(client))
 
-    def test_unsupported_browser_raises(self):
-        provider = CookieAuthProvider(browser="netscape_navigator")
-
-        import asyncio
-
-        client = httpx.AsyncClient()
-        with pytest.raises(
-            AuthError,
-            match="browser-cookie3 package not installed|Unsupported browser",
-        ):
-            asyncio.run(provider.authenticate(client))
-
     def test_no_source_raises(self):
         provider = CookieAuthProvider()
 
         import asyncio
 
         client = httpx.AsyncClient()
-        with pytest.raises(AuthError, match="No cookie file or browser"):
+        with pytest.raises(AuthError, match="No cookie file specified"):
             asyncio.run(provider.authenticate(client))
 
     @pytest.mark.asyncio

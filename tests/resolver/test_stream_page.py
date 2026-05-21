@@ -159,6 +159,25 @@ class TestStreamPageResolver:
         meta = self.resolver._extract_metadata(html, PARSED_STREAM)
         assert meta.name == "video.mp4"
 
+    @respx.mock
+    @pytest.mark.asyncio
+    async def test_download_blocked_with_manifest_url_returns_target(self):
+        """When download is blocked but g_fileInfo has a manifest URL, use it directly."""
+        file_info = {
+            "isDownloadBlocked": True,
+            "name": "meeting.mp4",
+            "size": 100_000,
+            "videoManifestUrl": "https://mediap.svc.ms/transform/videomanifest?access_token=sp_token_123&format=dash",
+        }
+        html = _make_html(g_file_info=file_info)
+        respx.get(PARSED_STREAM.original_url).mock(return_value=httpx.Response(200, text=html))
+
+        async with httpx.AsyncClient() as client:
+            target = await self.resolver.resolve(PARSED_STREAM, client)
+        assert target.is_manifest is True
+        assert "access_token=sp_token_123" in target.download_url
+        assert target.requires_auth_headers is False
+
     def test_default_metadata(self):
         meta = self.resolver._default_metadata(PARSED_STREAM)
         assert meta.name == "video.mp4"

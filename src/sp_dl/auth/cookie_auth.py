@@ -18,9 +18,8 @@ logger = logging.getLogger(__name__)
 class CookieAuthProvider(AuthProvider):
     """Authenticate using exported browser cookies (Netscape format)."""
 
-    def __init__(self, cookies_file: Path | None = None, browser: str | None = None):
+    def __init__(self, cookies_file: Path | None = None):
         self._cookies_file = cookies_file
-        self._browser = browser
         self._cookie_jar: http.cookiejar.MozillaCookieJar | None = None
 
     @property
@@ -31,18 +30,14 @@ class CookieAuthProvider(AuthProvider):
     def description(self) -> str:
         if self._cookies_file:
             return f"Cookie-based (file: {self._cookies_file.name})"
-        if self._browser:
-            return f"Cookie-based (from {self._browser})"
         return "Cookie-based"
 
     async def authenticate(self, client: httpx.AsyncClient) -> httpx.AsyncClient:
         """Load cookies and apply to the client."""
         if self._cookies_file:
             cookies = self._load_cookie_file(self._cookies_file)
-        elif self._browser:
-            cookies = self._extract_from_browser(self._browser)
         else:
-            raise AuthError("No cookie file or browser specified")
+            raise AuthError("No cookie file specified")
 
         # Validate that required cookies are present
         cookie_names = {c.name for c in cookies}
@@ -108,49 +103,4 @@ class CookieAuthProvider(AuthProvider):
             )
 
         logger.info(f"Loaded {len(sp_cookies)} SharePoint cookies from {path}")
-        return jar
-
-    def _extract_from_browser(self, browser: str) -> http.cookiejar.CookieJar:  # pragma: no cover
-        """Extract cookies from installed browser."""
-        try:
-            import browser_cookie3
-        except ImportError:
-            raise AuthError(
-                "browser-cookie3 package not installed.\n"
-                "Install with: pip install sp-dl[browser-cookies]\n"
-                "Or export cookies manually to a file."
-            ) from None
-
-        browser_lower = browser.lower()
-        extractors = {
-            "chrome": browser_cookie3.chrome,
-            "firefox": browser_cookie3.firefox,
-            "edge": browser_cookie3.edge,
-            "opera": browser_cookie3.opera,
-            "brave": browser_cookie3.brave,
-            "chromium": browser_cookie3.chromium,
-        }
-
-        extractor = extractors.get(browser_lower)
-        if not extractor:
-            raise AuthError(
-                f"Unsupported browser: {browser}\nSupported: {', '.join(extractors.keys())}"
-            )
-
-        try:
-            jar = extractor(domain_name=".sharepoint.com")
-        except Exception as e:
-            raise AuthError(
-                f"Failed to extract cookies from {browser}: {e}\n"
-                "Make sure the browser is closed or try exporting cookies manually."
-            ) from e
-
-        sp_cookies = [c for c in jar if ".sharepoint.com" in (c.domain or "")]
-        if not sp_cookies:
-            raise AuthError(
-                f"No SharePoint cookies found in {browser}.\n"
-                "Make sure you're logged into SharePoint in that browser."
-            )
-
-        logger.info(f"Extracted {len(sp_cookies)} SharePoint cookies from {browser}")
         return jar

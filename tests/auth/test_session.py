@@ -21,10 +21,6 @@ class TestCreateAuthProvider:
         provider = create_auth_provider(cookies_file=tmp_path / "c.txt")
         assert isinstance(provider, CookieAuthProvider)
 
-    def test_auto_detect_cookies_browser(self):
-        provider = create_auth_provider(cookies_from_browser="chrome")
-        assert isinstance(provider, CookieAuthProvider)
-
     def test_auto_detect_client_credentials(self):
         provider = create_auth_provider(client_id="id", client_secret="secret")
         assert isinstance(provider, ClientCredentialsAuthProvider)
@@ -37,6 +33,10 @@ class TestCreateAuthProvider:
         provider = create_auth_provider(
             method=AuthMethod.DEVICE_CODE, tenant="contoso.onmicrosoft.com"
         )
+        assert isinstance(provider, DeviceCodeAuthProvider)
+
+    def test_device_code_with_sharepoint_domain(self):
+        provider = create_auth_provider(sharepoint_domain="contoso-my.sharepoint.com")
         assert isinstance(provider, DeviceCodeAuthProvider)
 
     def test_explicit_interactive(self):

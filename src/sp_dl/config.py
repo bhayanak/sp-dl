@@ -32,7 +32,6 @@ class SpDlConfig:
 
     # Auth
     cookies_file: str = ""
-    cookies_from_browser: str = ""
     tenant: str = "common"
     client_id: str = ""
 
@@ -74,8 +73,6 @@ class SpDlConfig:
             self.output_template = defaults["output_template"]
         if "cookies_file" in defaults:
             self.cookies_file = defaults["cookies_file"]
-        if "cookies_from_browser" in defaults:
-            self.cookies_from_browser = defaults["cookies_from_browser"]
         if "limit_rate" in defaults:
             self.limit_rate = defaults["limit_rate"]
         if "retries" in defaults:

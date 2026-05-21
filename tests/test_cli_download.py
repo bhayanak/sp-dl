@@ -9,6 +9,7 @@ from typer.testing import CliRunner
 from sp_dl.cli import app
 from sp_dl.models import (
     DownloadBlockedError,
+    DownloadError,
     DownloadResult,
     DownloadStatus,
     DownloadTarget,
@@ -453,9 +454,11 @@ class TestDownloadFlow:
     @patch("sp_dl.auth.session.create_auth_provider")
     @patch("sp_dl.auth.session.build_session", new_callable=AsyncMock)
     @patch("sp_dl.resolver.resolve_download_target", new_callable=AsyncMock)
+    @patch("sp_dl.downloader.parallel_dash.download_dash_parallel", new_callable=AsyncMock)
     def test_download_manifest_no_ffmpeg(
-        self, mock_resolve, mock_session, mock_auth, mock_parse, tmp_path
+        self, mock_dash_dl, mock_resolve, mock_session, mock_auth, mock_parse, tmp_path
     ):
+        """Parallel DASH download works even without ffmpeg (degrades gracefully)."""
         target = _sample_target()
         target.is_manifest = True
         mock_parse.return_value = _sample_parsed()
@@ -465,6 +468,7 @@ class TestDownloadFlow:
         mock_client.aclose = AsyncMock()
         mock_session.return_value = mock_client
         mock_resolve.return_value = target
+        mock_dash_dl.side_effect = DownloadError("Failed to fetch DASH manifest (HTTP 401)")
 
         cookies = tmp_path / "cookies.txt"
         cookies.write_text("# Netscape cookie\n.sharepoint.com\tTRUE\t/\tTRUE\t0\tFedAuth\tvalue\n")
@@ -480,18 +484,16 @@ class TestDownloadFlow:
                 ],
             )
         assert result.exit_code == 1
-        assert "ffmpeg" in result.output.lower()
+        assert "download error" in result.output.lower()
 
     @patch("sp_dl.url_parser.detect_and_parse")
     @patch("sp_dl.auth.session.create_auth_provider")
     @patch("sp_dl.auth.session.build_session", new_callable=AsyncMock)
     @patch("sp_dl.resolver.resolve_download_target", new_callable=AsyncMock)
-    @patch("sp_dl.downloader.ffmpeg.download_manifest", new_callable=AsyncMock)
-    @patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True)
+    @patch("sp_dl.downloader.parallel_dash.download_dash_parallel", new_callable=AsyncMock)
     def test_download_manifest_success(
         self,
-        mock_ffmpeg_avail,
-        mock_dl_manifest,
+        mock_dash_dl,
         mock_resolve,
         mock_session,
         mock_auth,
@@ -507,7 +509,7 @@ class TestDownloadFlow:
         mock_client.aclose = AsyncMock()
         mock_session.return_value = mock_client
         mock_resolve.return_value = target
-        mock_dl_manifest.return_value = None
+        mock_dash_dl.return_value = None
 
         cookies = tmp_path / "cookies.txt"
         cookies.write_text("# Netscape cookie\n.sharepoint.com\tTRUE\t/\tTRUE\t0\tFedAuth\tvalue\n")
@@ -522,7 +524,7 @@ class TestDownloadFlow:
             ],
         )
         assert result.exit_code == 0
-        mock_dl_manifest.assert_called_once()
+        mock_dash_dl.assert_called_once()
 
     @patch("sp_dl.url_parser.detect_and_parse")
     @patch("sp_dl.auth.session.create_auth_provider")
@@ -645,8 +647,7 @@ class TestDownloadFlow:
                 "sp_dl.resolver.media_stream.MediaStreamResolver.resolve",
                 new_callable=AsyncMock,
             ) as mock_ms,
-            patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),
-            patch("sp_dl.downloader.ffmpeg.download_manifest", new_callable=AsyncMock),
+            patch("sp_dl.downloader.parallel_dash.download_dash_parallel", new_callable=AsyncMock),
         ):
             mock_instance = mock_dc_cls.return_value
             mock_instance.authenticate = AsyncMock()
@@ -698,8 +699,7 @@ class TestDownloadFlow:
                 "sp_dl.resolver.media_stream.MediaStreamResolver.resolve",
                 new_callable=AsyncMock,
             ) as mock_ms,
-            patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),
-            patch("sp_dl.downloader.ffmpeg.download_manifest", new_callable=AsyncMock),
+            patch("sp_dl.downloader.parallel_dash.download_dash_parallel", new_callable=AsyncMock),
         ):
             mock_instance = mock_dc_cls.return_value
             mock_instance.authenticate = AsyncMock()

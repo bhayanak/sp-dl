@@ -21,17 +21,17 @@ logger = logging.getLogger(__name__)
 def create_auth_provider(
     method: AuthMethod | None = None,
     cookies_file: Path | None = None,
-    cookies_from_browser: str | None = None,
     tenant: str = "common",
     client_id: str | None = None,
     client_secret: str | None = None,
+    sharepoint_domain: str | None = None,
 ) -> AuthProvider:
     """Create the appropriate auth provider based on parameters."""
     from sp_dl.constants import DEFAULT_CLIENT_ID
 
     # Auto-detect method if not specified
     if method is None:
-        if cookies_file or cookies_from_browser:
+        if cookies_file:
             method = AuthMethod.COOKIES
         elif client_id and client_secret:
             method = AuthMethod.CLIENT_CREDENTIALS
@@ -42,12 +42,13 @@ def create_auth_provider(
     if method == AuthMethod.COOKIES:
         return CookieAuthProvider(
             cookies_file=cookies_file,
-            browser=cookies_from_browser,
         )
     elif method == AuthMethod.DEVICE_CODE:
         # Use SharePoint-specific scopes when tenant is known
         scopes = None
-        if tenant and tenant != "common":
+        if sharepoint_domain:
+            scopes = [f"https://{sharepoint_domain}/.default", "offline_access"]
+        elif tenant and tenant != "common":
             # Derive SharePoint domain from tenant
             # e.g. "contoso.onmicrosoft.com" → "contoso.sharepoint.com"
             tenant_base = tenant.replace(".onmicrosoft.com", "")

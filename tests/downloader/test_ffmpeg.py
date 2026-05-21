@@ -39,7 +39,11 @@ class TestDownloadManifest:
 
         mock_process = AsyncMock()
         mock_process.returncode = 0
-        mock_process.communicate = AsyncMock(return_value=(b"", b""))
+        mock_process.wait = AsyncMock()
+        # Simulate stderr output: one progress line then EOF
+        mock_process.stderr.readline = AsyncMock(
+            side_effect=[b"size=   1024kB time=00:00:10.00 bitrate= 838.0kbits/s\n", b""]
+        )
 
         with (
             patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),
@@ -58,12 +62,48 @@ class TestDownloadManifest:
             assert result == output_path
 
     @pytest.mark.asyncio
+    async def test_successful_download_with_progress(self, tmp_path: Path):
+        output_path = tmp_path / "video.mp4"
+
+        mock_process = AsyncMock()
+        mock_process.returncode = 0
+        mock_process.wait = AsyncMock()
+        mock_process.stderr.readline = AsyncMock(
+            side_effect=[
+                b"size=   512kB time=00:00:05.00 bitrate= 838.0kbits/s\n",
+                b"size=  1024kB time=00:00:10.00 bitrate= 838.0kbits/s\n",
+                b"",
+            ]
+        )
+
+        progress_values = []
+
+        with (
+            patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),
+            patch(
+                "sp_dl.downloader.ffmpeg.asyncio.create_subprocess_exec",
+                return_value=mock_process,
+            ),
+        ):
+            output_path.write_bytes(b"fake video data")
+            await download_manifest(
+                "https://example.com/manifest.mpd",
+                output_path,
+                progress_callback=lambda n: progress_values.append(n),
+            )
+
+        assert progress_values == [512 * 1024, 512 * 1024]
+
+    @pytest.mark.asyncio
     async def test_ffmpeg_failure_raises(self, tmp_path: Path):
         output_path = tmp_path / "video.mp4"
 
         mock_process = AsyncMock()
         mock_process.returncode = 1
-        mock_process.communicate = AsyncMock(return_value=(b"", b"Error: something went wrong"))
+        mock_process.wait = AsyncMock()
+        mock_process.stderr.readline = AsyncMock(
+            side_effect=[b"Error: something went wrong\n", b""]
+        )
 
         with (
             patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),
@@ -84,7 +124,8 @@ class TestDownloadManifest:
 
         mock_process = AsyncMock()
         mock_process.returncode = 0
-        mock_process.communicate = AsyncMock(return_value=(b"", b""))
+        mock_process.wait = AsyncMock()
+        mock_process.stderr.readline = AsyncMock(side_effect=[b""])
 
         with (
             patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),
@@ -106,7 +147,8 @@ class TestDownloadManifest:
 
         mock_process = AsyncMock()
         mock_process.returncode = 0
-        mock_process.communicate = AsyncMock(return_value=(b"", b""))
+        mock_process.wait = AsyncMock()
+        mock_process.stderr.readline = AsyncMock(side_effect=[b""])
 
         with (
             patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),
@@ -132,7 +174,8 @@ class TestDownloadManifest:
 
         mock_process = AsyncMock()
         mock_process.returncode = 0
-        mock_process.communicate = AsyncMock(return_value=(b"", b""))
+        mock_process.wait = AsyncMock()
+        mock_process.stderr.readline = AsyncMock(side_effect=[b""])
 
         with (
             patch("sp_dl.downloader.ffmpeg.is_ffmpeg_available", return_value=True),

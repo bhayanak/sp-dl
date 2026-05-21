@@ -30,7 +30,6 @@ retry_wait = 3
 no_overwrites = true
 quiet = true
 cookies_file = "/tmp/cookies.txt"
-cookies_from_browser = "chrome"
 
 [auth]
 tenant = "contoso.onmicrosoft.com"
@@ -48,7 +47,6 @@ client_id = "my-client-id"
         assert config.no_overwrites is True
         assert config.quiet is True
         assert config.cookies_file == "/tmp/cookies.txt"
-        assert config.cookies_from_browser == "chrome"
         assert config.tenant == "contoso.onmicrosoft.com"
         assert config.client_id == "my-client-id"
 
