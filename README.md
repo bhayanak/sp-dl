@@ -75,7 +75,7 @@ sp-dl download "https://contoso.sharepoint.com/sites/Team/Shared%20Documents/vid
 
 ### Download-Blocked Videos (Enterprise Tenants)
 
-Some organizations disable direct file downloads via SharePoint admin policy. `sp-dl` detects this automatically and switches to **adaptive streaming** (DASH via ffmpeg):
+Some organizations disable direct file downloads via SharePoint admin policy. `sp-dl` detects this automatically and switches to **parallel adaptive streaming**:
 
 ```bash
 # Works even when admin has blocked downloads!
@@ -85,12 +85,13 @@ sp-dl download "https://contoso-my.sharepoint.com/personal/user/_layouts/15/stre
 ```
 
 **How it works:**
-1. Detects `isDownloadBlocked` policy from the stream page
-2. Acquires an OAuth2 token via device code flow (cached for future use)
+1. Detects download-blocked policy from the stream page or 401/403 response
+2. Acquires an OAuth2 token via device code flow (cached per-domain for future use)
 3. Builds a DASH manifest URL via Microsoft's media proxy
-4. Downloads all video segments using ffmpeg and merges them into a single MP4
+4. Downloads all video/audio segments in parallel (10 concurrent connections)
+5. Muxes audio + video into a single MP4 using ffmpeg
 
-> **Requires** [ffmpeg](https://ffmpeg.org/download.html) installed: `brew install ffmpeg` (macOS) or `apt install ffmpeg` (Linux)
+> **Requires** [ffmpeg](https://ffmpeg.org/download.html) for final muxing: `brew install ffmpeg` (macOS) or `apt install ffmpeg` (Linux)
 
 ## Usage
 
@@ -140,7 +141,7 @@ sp-dl quickstart
 
 | Method | Best For | Setup |
 |---|---|---|
-| `--cookies` | Quick downloads, read-only users | Export cookies from browser |
+| `--cookies` | Quick downloads, read-only users | Export cookies from browser (e.g. "Get cookies.txt LOCALLY" extension) |
 | `sp-dl auth login` | Enterprise tenants, download-blocked sites | One-time device code login |
 | `--client-id --client-secret` | Service accounts, CI/CD | Azure AD admin setup |
 

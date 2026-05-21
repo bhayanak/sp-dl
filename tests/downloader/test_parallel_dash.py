@@ -8,8 +8,6 @@ from unittest.mock import AsyncMock, patch
 import pytest
 
 from sp_dl.downloader.parallel_dash import (
-    Representation,
-    Segment,
     _expand_template,
     _load_cookies_header,
     _parse_mpd,

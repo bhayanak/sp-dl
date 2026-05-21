@@ -388,7 +388,6 @@ def _extract_segments(
         init_template = seg_template.get("initialization", "")
         media_template = seg_template.get("media", "")
         start_number = int(seg_template.get("startNumber", "1"))
-        timescale = int(seg_template.get("timescale", "1"))
 
         # Initialization
         if init_template:
