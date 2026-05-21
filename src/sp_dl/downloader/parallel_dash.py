@@ -94,8 +94,7 @@ async def download_dash_parallel(
         resp = await client.get(manifest_url)
         if resp.status_code != 200:
             raise DownloadError(
-                f"Failed to fetch DASH manifest (HTTP {resp.status_code}): "
-                f"{resp.text[:200]}"
+                f"Failed to fetch DASH manifest (HTTP {resp.status_code}): {resp.text[:200]}"
             )
 
         mpd_text = resp.text

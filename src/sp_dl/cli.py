@@ -568,7 +568,9 @@ async def _download_async(
 
             with progress:
                 await download_dash_parallel(
-                    target.download_url, output_path, cookies,
+                    target.download_url,
+                    output_path,
+                    cookies,
                     progress_callback=manifest_progress_cb,
                 )
             if not quiet:
@@ -642,7 +644,9 @@ async def _download_async(
 
                     with retry_progress:
                         await download_dash_parallel(
-                            target.download_url, output_path, cookies,
+                            target.download_url,
+                            output_path,
+                            cookies,
                             progress_callback=retry_progress_cb,
                         )
                     if not quiet:
